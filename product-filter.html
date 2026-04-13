@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>產品篩選器管理 - DFI-PMS</title>
+    <style>
+        /* === 共用全局版型樣式 === */
+        :root { --primary: #0056b3; --sidebar-bg: #2c3e50; --sidebar-hover: #34495e; --bg-color: #f4f7f6; --text-color: #333; --border-color: #ddd; --success: #27ae60; --danger: #e74c3c; }
+        body { margin: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; height: 100vh; background-color: var(--bg-color); color: var(--text-color); }
+        .sidebar { width: 250px; background-color: var(--sidebar-bg); color: white; display: flex; flex-direction: column; flex-shrink: 0; }
+        .logo { padding: 20px; font-size: 1.2rem; font-weight: bold; text-align: center; border-bottom: 1px solid #1a252f; background: #1a252f; }
+        .menu { list-style: none; padding: 0; margin: 0; flex-grow: 1; overflow-y: auto; }
+        .menu li { padding: 15px 20px; cursor: pointer; border-bottom: 1px solid #34495e; transition: 0.3s; }
+        .menu li:hover, .menu li.active { background-color: var(--sidebar-hover); border-left: 4px solid var(--primary); }
+        .menu .sub-menu { padding-left: 20px; font-size: 0.9em; background: #243342; margin-top: 10px; display: none; }
+        .menu li.expanded .sub-menu { display: block; }
+        .sub-menu div { padding: 10px; cursor: pointer; }
+        .sub-menu div:hover, .sub-menu div.active-sub { color: #3498db; font-weight: bold; }
+        .main-content { flex-grow: 1; display: flex; flex-direction: column; overflow-y: auto; }
+        .header { background: white; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1); z-index: 10; }
+        .user-info { font-size: 0.9em; color: #666; }
+        .logout { color: var(--primary); cursor: pointer; font-weight: bold; margin-left: 10px; }
+        .content-area { padding: 30px; }
+        .page { background: white; padding: 25px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        h2 { margin-top: 0; color: var(--primary); border-bottom: 2px solid var(--primary); padding-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+
+        /* === 按鈕與開關 === */
+        .btn-primary { background: var(--primary); color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; }
+        .btn-success { background: var(--success); color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; }
+        .btn-secondary { background: #95a5a6; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; }
+        .toggle-switch { position: relative; display: inline-block; width: 40px; height: 20px; background-color: #ccc; border-radius: 20px; cursor: pointer; vertical-align: middle; }
+        .toggle-switch::after { content: ''; position: absolute; width: 16px; height: 16px; background-color: white; border-radius: 50%; top: 2px; left: 2px; transition: 0.3s; }
+        .toggle-switch.on { background-color: var(--success); }
+        .toggle-switch.on::after { left: 22px; }
+
+        /* === 【修復核心】穩定的多語系表單排版 === */
+        .lang-container { background: #fcfcfc; padding: 20px; border: 1px solid #eee; border-radius: 6px; margin-bottom: 20px; }
+        .lang-row { display: flex; align-items: center; margin-bottom: 15px; }
+        .lang-row:last-child { margin-bottom: 0; }
+        .lang-label { width: 140px; text-align: right; padding-right: 20px; font-weight: bold; color: #555; font-size: 0.9em; flex-shrink: 0; }
+        .lang-input { flex-grow: 1; }
+        .lang-input input { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+
+        /* === 樹狀選單與表格 === */
+        .tree-select { border: 1px solid #ddd; padding: 15px; max-height: 150px; overflow-y: auto; background: #fafafa; border-radius: 4px; line-height: 1.8; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { border: 1px solid var(--border-color); padding: 10px; text-align: left; font-size: 0.9em; }
+        th { background-color: #f8f9fa; font-weight: bold; }
+        td input[type="text"] { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        
+        .view-section { display: none; }
+        .view-section.active { display: block; }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <div class="logo">DFI-PMS 產品管理</div>
+        <ul class="menu">
+            <li onclick="window.location.href='index.html'">🏠 首頁 (Dashboard)</li>
+            <li onclick="window.location.href='system-admin.html'">⚙️ 一、系統管理</li>
+            <li onclick="window.location.href='account-admin.html'">👤 二、帳號權限管理</li>
+            <li class="expanded active" onclick="this.classList.toggle('expanded')">
+                📦 三、產品管理
+                <div class="sub-menu">
+                    <div onclick="event.stopPropagation(); window.location.href='product-category.html'">▶ 產品分類管理</div>
+                    <div class="active-sub" onclick="event.stopPropagation(); window.location.href='product-filter.html'">▶ 產品篩選器管理</div>
+                    <div onclick="event.stopPropagation(); window.location.href='product-spec.html'">▶ 產品規格欄位管理</div>
+					<div onclick="event.stopPropagation(); window.location.href='product-tag.html'">▶ Tag 管理</div>
+                    <div onclick="event.stopPropagation(); window.location.href='product-info.html'">▶ 產品資訊管理</div>
+                </div>
+            </li>
+            <li onclick="window.location.href='download-admin.html'">📁 四、下載檔案管理</li>
+        </ul>
+    </div>
+
+    <div class="main-content">
+        <div class="header">
+            <div id="breadcrumb">產品管理 / 產品篩選器管理</div>
+            <div class="user-info">admin@dfi.com (SSO) <span class="logout">[登出]</span></div>
+        </div>
+        
+        <div class="content-area">
+            
+            <div id="view-list" class="view-section active page">
+                <h2>篩選器群組列表 <button class="btn-primary" onclick="toggleView('view-form')">+ 新增篩選器</button></h2>
+                <table>
+                    <thead>
+                        <tr><th style="width:60px; text-align:center;">排序</th><th>篩選器名稱 (EN)</th><th>套用分類</th><th style="width:80px; text-align:center;">狀態</th><th style="width:100px; text-align:center;">操作</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td style="text-align:center;">↕ 1</td>
+                            <td><strong>Form Factor</strong></td>
+                            <td>Industrial Motherboards</td>
+                            <td style="text-align:center;"><div class="toggle-switch on"></div></td>
+                            <td style="text-align:center;"><a href="javascript:void(0)" style="color:var(--primary);" onclick="toggleView('view-form')">編輯</a></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div id="view-form" class="view-section page">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                    <h2 style="border:none; margin:0; padding:0;">維護篩選器群組與選項</h2>
+                    <div>
+                        <button class="btn-secondary" onclick="toggleView('view-list')">取消並返回</button>
+                        <button class="btn-success" onclick="toggleView('view-list')">💾 儲存所有設定</button>
+                    </div>
+                </div>
+
+                <h3 style="color:var(--primary); border-bottom:1px solid #eee; padding-bottom:10px; margin-top:30px;">1. 群組名稱與分類綁定</h3>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:30px; margin-bottom:20px;">
+                    <div>
+                        <label style="display:block; font-weight:bold; margin-bottom:10px;">套用分類 (多選樹狀) *</label>
+                        <div class="tree-select">
+                            <label><input type="checkbox" checked> <strong>Industrial Motherboards</strong></label><br>
+                            <label style="margin-left: 25px;"><input type="checkbox" checked> Mini-ITX</label><br>
+                            <label><input type="checkbox"> <strong>System-On-Modules</strong></label>
+                        </div>
+                    </div>
+                    <div>
+                        <label style="display:block; font-weight:bold; margin-bottom:10px;">群組狀態</label>
+                        <div class="toggle-switch on" onclick="this.classList.toggle('on')"></div>
+                        <p style="font-size:0.85em; color:#666; margin-top:10px;">啟用時前台與產品維護頁才會顯示此篩選器</p>
+                    </div>
+                </div>
+
+                <div class="lang-container">
+                    <div class="lang-row">
+                        <div class="lang-label">English (EN) *</div>
+                        <div class="lang-input"><input type="text" value="Form Factor"></div>
+                    </div>
+                    <div class="lang-row">
+                        <div class="lang-label">繁體中文 (TW)</div>
+                        <div class="lang-input"><input type="text" value="主板尺寸"></div>
+                    </div>
+                    <div class="lang-row">
+                        <div class="lang-label">簡體中文 (CN)</div>
+                        <div class="lang-input"><input type="text" value="主板尺寸"></div>
+                    </div>
+                    <div class="lang-row">
+                        <div class="lang-label">日本語 (JP)</div>
+                        <div class="lang-input"><input type="text" value="フォームファクタ"></div>
+                    </div>
+                    <div class="lang-row">
+                        <div class="lang-label">Deutsch (DE)</div>
+                        <div class="lang-input"><input type="text" value="Formfaktor"></div>
+                    </div>
+                </div>
+
+                <h3 style="color:var(--primary); border-bottom:1px solid #eee; padding-bottom:10px; margin-top:40px;">2. 篩選選項管理 (Filter Options)</h3>
+                <p style="font-size:0.85em; color:#666;">新增與編輯此篩選器下所有的選項。支援拖曳排序。</p>
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width:50px; text-align:center;">排序</th>
+                            <th>EN 名稱 *</th><th>TW 名稱</th><th>CN 名稱</th><th>JP 名稱</th><th>DE 名稱</th>
+                            <th style="width:60px; text-align:center;">狀態</th><th style="width:50px; text-align:center;">刪除</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td style="text-align:center; cursor:grab; color:#999;">↕ 1</td>
+                            <td><input type="text" value="Mini-ITX"></td>
+                            <td><input type="text" value="Mini-ITX"></td>
+                            <td><input type="text" value="Mini-ITX"></td>
+                            <td><input type="text" value="Mini-ITX"></td>
+                            <td><input type="text" value="Mini-ITX"></td>
+                            <td style="text-align:center;"><div class="toggle-switch on" onclick="this.classList.toggle('on')"></div></td>
+                            <td style="text-align:center; cursor:pointer; color:var(--danger);">🗑️</td>
+                        </tr>
+                        <tr>
+                            <td style="text-align:center; cursor:grab; color:#999;">↕ 2</td>
+                            <td><input type="text" value="microATX"></td>
+                            <td><input type="text" value="microATX"></td>
+                            <td><input type="text" value="microATX"></td>
+                            <td><input type="text" value="microATX"></td>
+                            <td><input type="text" value="microATX"></td>
+                            <td style="text-align:center;"><div class="toggle-switch on" onclick="this.classList.toggle('on')"></div></td>
+                            <td style="text-align:center; cursor:pointer; color:var(--danger);">🗑️</td>
+                        </tr>
+                    </tbody>
+                </table>
+                <button class="btn-primary" style="margin-top:15px; background:#666;">+ 新增選項列</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        function toggleView(id) {
+            document.querySelectorAll('.view-section').forEach(v => v.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+        }
+    </script>
+</body>
+</html>

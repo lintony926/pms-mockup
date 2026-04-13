@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>產品資訊管理 - DFI-PMS</title>
+    <style>
+        /* === 共用全局版型樣式 === */
+        :root { --primary: #0056b3; --sidebar-bg: #2c3e50; --sidebar-hover: #34495e; --bg-color: #f4f7f6; --text-color: #333; --border-color: #ddd; --success: #27ae60; --danger: #e74c3c; }
+        body { margin: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; height: 100vh; background-color: var(--bg-color); color: var(--text-color); }
+        .sidebar { width: 250px; background-color: var(--sidebar-bg); color: white; display: flex; flex-direction: column; flex-shrink: 0; }
+        .logo { padding: 20px; font-size: 1.2rem; font-weight: bold; text-align: center; border-bottom: 1px solid #1a252f; background: #1a252f; }
+        .menu { list-style: none; padding: 0; margin: 0; flex-grow: 1; overflow-y: auto; }
+        .menu li { padding: 15px 20px; cursor: pointer; border-bottom: 1px solid #34495e; transition: 0.3s; }
+        .menu li:hover, .menu li.active { background-color: var(--sidebar-hover); border-left: 4px solid var(--primary); }
+        .menu .sub-menu { padding-left: 20px; font-size: 0.9em; background: #243342; margin-top: 10px; display: none; }
+        .menu li.expanded .sub-menu { display: block; }
+        .sub-menu div { padding: 10px; cursor: pointer; }
+        .sub-menu div:hover, .sub-menu div.active-sub { color: #3498db; font-weight: bold; }
+        .main-content { flex-grow: 1; display: flex; flex-direction: column; overflow-y: auto; }
+        .header { background: white; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1); z-index: 10; position: sticky; top: 0; }
+        .user-info { font-size: 0.9em; color: #666; }
+        .logout { color: var(--primary); cursor: pointer; font-weight: bold; margin-left: 10px; }
+        .content-area { padding: 30px; }
+        .card { background: white; padding: 25px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        h2 { margin-top: 0; color: var(--primary); border-bottom: 2px solid var(--primary); padding-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+
+        /* === 按鈕與開關 === */
+        .btn-primary { background: var(--primary); color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; }
+        .btn-success { background: var(--success); color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; }
+        .btn-secondary { background: #95a5a6; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; }
+        .toggle-switch { position: relative; display: inline-block; width: 40px; height: 20px; background-color: #ccc; border-radius: 20px; cursor: pointer; vertical-align: middle; }
+        .toggle-switch::after { content: ''; position: absolute; width: 16px; height: 16px; background-color: white; border-radius: 50%; top: 2px; left: 2px; transition: 0.3s; }
+        .toggle-switch.on { background-color: var(--success); }
+        .toggle-switch.on::after { left: 22px; }
+
+        /* === 表單與網格 === */
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; }
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; font-weight: bold; margin-bottom: 8px; color: #444; font-size: 0.9em; }
+        .form-group input[type="text"], .form-group select, .form-group textarea { width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 4px; box-sizing: border-box; }
+        
+        /* === 專屬組件：多語系切換列 === */
+        .lang-switch-bar { display: flex; justify-content: space-between; align-items: center; background: #eef2f5; padding: 10px 15px; border-radius: 6px; margin-bottom: 20px; }
+        .lang-tabs span { padding: 8px 15px; cursor: pointer; border-radius: 4px; margin-right: 5px; font-weight: bold; font-size: 0.9em; }
+        .lang-tabs span.active { background: var(--primary); color: white; }
+        
+        /* === 專屬組件：6大頁籤 === */
+        .page-tabs { display: flex; border-bottom: 2px solid var(--border-color); margin-bottom: 20px; background: white; }
+        .page-tabs div { padding: 12px 20px; cursor: pointer; font-weight: bold; color: #666; transition: 0.3s; border-bottom: 3px solid transparent; }
+        .page-tabs div:hover { color: var(--primary); }
+        .page-tabs div.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .tab-pane { display: none; }
+        .tab-pane.active { display: block; }
+
+        /* === 專屬組件：檔案上傳區塊 === */
+        .file-drop { border: 2px dashed #ccc; padding: 25px; text-align: center; border-radius: 6px; background: #fafafa; color: #666; cursor: pointer; transition: 0.3s; }
+        .file-drop:hover { border-color: var(--primary); background: #f0f8ff; }
+
+        /* === 專屬組件：動態矩陣表格 === */
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { border: 1px solid var(--border-color); padding: 12px; text-align: left; font-size: 0.9em; }
+        th { background-color: #f8f9fa; font-weight: bold; }
+        
+        .tree-select { border: 1px solid #ddd; padding: 15px; max-height: 150px; overflow-y: auto; background: #fafafa; border-radius: 4px; line-height: 1.8; }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <div class="logo">DFI-PMS 產品管理</div>
+        <ul class="menu">
+            <li onclick="window.location.href='index.html'">🏠 首頁 (Dashboard)</li>
+            <li onclick="window.location.href='system-admin.html'">⚙️ 一、系統管理</li>
+            <li onclick="window.location.href='account-admin.html'">👤 二、帳號權限管理</li>
+            <li class="expanded active" onclick="this.classList.toggle('expanded')">
+                📦 三、產品管理
+                <div class="sub-menu">
+                    <div onclick="event.stopPropagation(); window.location.href='product-category.html'">▶ 產品分類管理</div>
+                    <div onclick="event.stopPropagation(); window.location.href='product-filter.html'">▶ 產品篩選器管理</div>
+                    <div onclick="event.stopPropagation(); window.location.href='product-spec.html'">▶ 產品規格欄位管理</div>
+					<div onclick="event.stopPropagation(); window.location.href='product-tag.html'">▶ Tag 管理</div>
+                    <div class="active-sub" onclick="event.stopPropagation(); window.location.href='product-info.html'">▶ 產品資訊管理</div>
+                </div>
+            </li>
+            <li onclick="window.location.href='download-admin.html'">📁 四、下載檔案管理</li>
+        </ul>
+    </div>
+
+    <div class="main-content">
+        <div class="header">
+            <div id="breadcrumb">產品管理 / 產品資訊管理 / 編輯產品</div>
+            <div class="user-info">admin@dfi.com (SSO) <span class="logout">[登出]</span></div>
+        </div>
+        
+        <div class="content-area">
+            
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                <h2 style="border:none; margin:0; padding:0;">編輯產品：Industrial Motherboard XYZ</h2>
+                <div>
+                    <button class="btn-secondary">取消</button>
+                    <button class="btn-primary" style="background:#f39c12; margin-left:10px;">儲存草稿</button>
+                    <button class="btn-success" style="margin-left:10px;" onclick="alert('儲存並發布成功！')">💾 儲存並發布</button>
+                </div>
+            </div>
+
+            <div class="lang-switch-bar">
+                <div class="lang-tabs">
+                    <span class="active">EN (預設)</span>
+                    <span>TW</span>
+                    <span>CN</span>
+                    <span>JP</span>
+                    <span>DE</span>
+                </div>
+                <button style="background: #f39c12; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; font-weight:bold;">🔄 一鍵同步內容至其他語言</button>
+            </div>
+
+            <div class="page-tabs">
+                <div class="active" onclick="switchTab('tab-1', this)">1. 產品基本資訊 🔒</div>
+                <div onclick="switchTab('tab-2', this)">2. 產品圖片 🔒</div>
+                <div onclick="switchTab('tab-3', this)">3. 產品規格 🔒</div>
+                <div onclick="switchTab('tab-4', this)">4. 多語系 Landing Page</div>
+                <div onclick="switchTab('tab-5', this)">5. 訂購資訊 🔒</div>
+                <div onclick="switchTab('tab-6', this)">6. 關聯性設定</div>
+            </div>
+
+            <div class="card">
+                
+                <div id="tab-1" class="tab-pane active">
+                    <h3 style="color:var(--primary); margin-top:0;">基本資訊 (Basic Information)</h3>
+                    <p style="font-size:0.85em; color:#666;">此頁籤設定為全語系共用。修改將套用至所有語言站台。</p>
+                    
+                    <div class="grid-2">
+                        <div class="form-group">
+                            <label>產品型號 (Model Name) *</label>
+                            <input type="text" value="Model XYZ">
+                        </div>
+                        <div class="form-group">
+                            <label>產品生命週期 (Lifecycle Stage) *</label>
+                            <select>
+                                <option>Planning</option>
+                                <option>Preliminary</option>
+                                <option>Sample Available</option>
+                                <option selected>Launched</option>
+                                <option>MOQ Required</option>
+                                <option>EOL</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="grid-2">
+                        <div class="form-group">
+                            <label style="color:var(--danger);">產品主分類 (Primary Category) * (單選，連動規格與篩選器)</label>
+                            <select>
+                                <option selected>Industrial Motherboards > Mini-ITX</option>
+                                <option>System-On-Modules > COM Express</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>產地 (Origin)</label>
+                            <select>
+                                <option selected>Taiwan</option>
+                                <option>China</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="grid-2">
+                        <div class="form-group">
+                            <label>次要分類 (Secondary Categories) (多選樹狀)</label>
+                            <div class="tree-select">
+                                <label><input type="checkbox"> Industrial Motherboards > microATX</label><br>
+                                <label><input type="checkbox"> Industrial Computers > Box PC</label>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>規格篩選器設定 (Filter Setting) (依主分類動態帶入)</label>
+                            <div class="tree-select" style="background:#fff;">
+                                <strong>Form Factor:</strong><br>
+                                <label><input type="checkbox" checked> Mini-ITX</label> <label><input type="checkbox"> microATX</label><br>
+                                <strong style="display:block; margin-top:10px;">CPU Support:</strong>
+                                <label><input type="checkbox" checked> Intel Core i9</label> <label><input type="checkbox" checked> Intel Core i7</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>標籤 (Tag) - 支援智慧輸入</label>
+                        <input type="text" placeholder="🔍 搜尋或輸入新增標籤，按 Enter 建立...">
+                        <div style="margin-top: 10px;">
+                            <span style="background: #eef2f5; padding: 6px 12px; border-radius: 20px; font-size: 0.85em; border:1px solid #ccc;">🏷️ IoT Ready ✖</span>
+                            <span style="background: #eef2f5; padding: 6px 12px; border-radius: 20px; font-size: 0.85em; border:1px solid #ccc; margin-left: 5px;">🏷️ Edge Computing ✖</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="tab-2" class="tab-pane">
+                    <h3 style="color:var(--primary); margin-top:0;">產品圖片 (Product Images)</h3>
+                    <p style="font-size:0.85em; color:#666;">全語系共用。支援新增多組產品圖，並可拖曳排序。</p>
+                    
+                    <div style="border:1px solid #eee; padding:20px; border-radius:6px; background:#fcfcfc; position:relative;">
+                        <div style="position:absolute; top:10px; right:10px; color:#999; cursor:grab;">↕ 拖曳排序</div>
+                        <h4 style="margin-top:0;">圖片群組 1 (主圖)</h4>
+                        <div class="grid-3">
+                            <div class="form-group">
+                                <label>Image - Desktop</label>
+                                <div class="file-drop">📷 上傳 Desktop 圖片</div>
+                            </div>
+                            <div class="form-group">
+                                <label>Image - Tablet</label>
+                                <div class="file-drop">📱 上傳 Tablet 圖片</div>
+                            </div>
+                            <div class="form-group">
+                                <label>Image - Mobile</label>
+                                <div class="file-drop">📱 上傳 Mobile 圖片</div>
+                            </div>
+                        </div>
+                        <div class="form-group" style="margin-bottom:0;">
+                            <label>Image Alt Text (替代文字)</label>
+                            <input type="text" placeholder="輸入圖片 SEO 描述">
+                        </div>
+                    </div>
+                    <button class="btn-primary" style="margin-top:15px;">+ 新增一組圖片</button>
+                </div>
+
+                <div id="tab-3" class="tab-pane">
+                    <h3 style="color:var(--primary); margin-top:0;">產品規格與文件 (Product Specification)</h3>
+                    <p style="font-size:0.85em; color:#666;">全語系共用。依據主分類自動帶入規格欄位，支援多 SKU 矩陣填寫。</p>
+                    
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                        <h4 style="margin:0;">SKU 規格矩陣表</h4>
+                        <div>
+                            <button class="btn-primary" style="background:#666;">+ 手動新增 SKU</button>
+                            <button class="btn-success" style="background:#207245;">📥 Excel 批次匯入</button>
+                        </div>
+                    </div>
+
+                    <div style="overflow-x:auto;">
+                        <table style="min-width: 800px;">
+                            <thead>
+                                <tr>
+                                    <th style="width:200px;">規格群組 / 欄位</th>
+                                    <th>SKU 1 (預設: Model XYZ) <span style="float:right; cursor:pointer; color:var(--danger);">🗑️</span></th>
+                                    <th>SKU 2 (手動新增) <span style="float:right; cursor:pointer; color:var(--danger);">🗑️</span></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr style="background:#f1f4f9;"><td colspan="3"><strong>System (群組)</strong></td></tr>
+                                <tr>
+                                    <td>CPU</td>
+                                    <td><input type="text" value="Intel Core i9-13900E"></td>
+                                    <td><input type="text" value="Intel Core i7-13700E"></td>
+                                </tr>
+                                <tr>
+                                    <td>Memory</td>
+                                    <td><input type="text" value="Up to 64GB DDR5"></td>
+                                    <td><input type="text" value="Up to 32GB DDR5"></td>
+                                </tr>
+                                <tr style="background:#f1f4f9;"><td colspan="3"><strong>I/O Interface (群組)</strong></td></tr>
+                                <tr>
+                                    <td>Ethernet</td>
+                                    <td><input type="text" value="2 x 2.5GbE LAN"></td>
+                                    <td><input type="text" value="2 x 2.5GbE LAN"></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <h4 style="margin-top:30px; border-bottom:1px solid #eee; padding-bottom:10px;">技術文件上傳</h4>
+                    <div class="grid-3">
+                        <div class="form-group">
+                            <label>Datasheet 規格書 (PDF)</label>
+                            <div class="file-drop">📄 上傳 Datasheet</div>
+                        </div>
+                        <div class="form-group">
+                            <label>Block Diagram 架構圖</label>
+                            <div class="file-drop">📊 上傳架構圖</div>
+                        </div>
+                        <div class="form-group">
+                            <label>Mechanical Drawing 尺寸圖</label>
+                            <div class="file-drop">📐 上傳尺寸圖</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="tab-4" class="tab-pane">
+                    <h3 style="color:var(--primary); margin-top:0;">多語系 Landing Page 資訊</h3>
+                    <p style="font-size:0.85em; color:#666;">當前編輯語系：<strong>English (EN)</strong>。切換上方語系列可編輯其他語言內容。</p>
+                    
+                    <div class="form-group">
+                        <label style="color:var(--danger);">語言啟用狀態 (Language Status) *</label>
+                        <div class="toggle-switch on" onclick="this.classList.toggle('on')"></div>
+                        <span style="font-size:0.85em; color:#666; margin-left:10px;">決定此產品是否於 EN 語系站台顯示。</span>
+                    </div>
+
+                    <div class="form-group">
+                        <label>產品特色短述 (Product Feature Overview)</label>
+                        <textarea rows="4" placeholder="請以列點方式輸入產品特色..."></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label>產品特點亮點 (Overview Highlight) - 網頁編輯器</label>
+                        <div style="border:1px solid #ccc; height:200px; padding:15px; background:#fafafa; border-radius:4px; color:#888;">
+                            [ 網頁編輯器 (Rich Text Editor) 載入區塊 ]<br>
+                            支援粗體、H2-H4標題、清單、圖片插入、表格、HTML 原始碼編輯...
+                        </div>
+                    </div>
+
+                    <h4 style="margin-top:30px; border-bottom:1px solid #eee; padding-bottom:10px;">產品 ICON 群組管理</h4>
+                    <button class="btn-primary" style="margin-bottom:15px;">+ 新增一組 ICON</button>
+                    <table style="margin-top:0;">
+                        <thead>
+                            <tr><th style="width:50px;">排序</th><th style="width:150px;">ICON 圖片</th><th>Title (EN)</th><th>Description (EN)</th><th style="width:50px;">操作</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td style="text-align:center; cursor:grab;">↕ 1</td>
+                                <td><div style="border:1px dashed #ccc; padding:10px; text-align:center; background:#fff;">上傳圖片</div></td>
+                                <td><input type="text" value="High Performance"></td>
+                                <td><input type="text" value="Powered by latest Intel processors"></td>
+                                <td style="text-align:center; color:var(--danger); cursor:pointer;">🗑️</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <h4 style="margin-top:30px; border-bottom:1px solid #eee; padding-bottom:10px;">SEO 與自訂代碼</h4>
+                    <div class="grid-2">
+                        <div class="form-group"><label>Slug (URL自定義名稱)</label><input type="text" value="model-xyz" placeholder="預設帶入 Model Name"></div>
+                        <div class="form-group"><label>Meta Title</label><input type="text" value="Model XYZ Industrial Motherboard | DFI"></div>
+                    </div>
+                    <div class="grid-2">
+                        <div class="form-group"><label>Meta Keywords</label><input type="text" value="Industrial Motherboard, Mini-ITX, IoT"></div>
+                        <div class="form-group"><label>Author</label><input type="text" value="DFI Inc."></div>
+                    </div>
+                    <div class="form-group">
+                        <label>Meta Description</label>
+                        <textarea rows="3">Discover DFI Model XYZ high performance industrial motherboard...</textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Custom HTML / Code</label>
+                        <textarea rows="3" placeholder="供嵌入追蹤碼或特殊 HTML 語法..."></textarea>
+                    </div>
+                </div>
+
+                <div id="tab-5" class="tab-pane">
+                    <h3 style="color:var(--primary); margin-top:0;">訂購資訊 (Ordering Information)</h3>
+                    <p style="font-size:0.85em; color:#666;">全語系共用。結構化訂購料號，並可動態新增 Port 欄位。</p>
+                    
+                    <div style="display:flex; justify-content:flex-end; margin-bottom:10px;">
+                        <button class="btn-primary" style="background:#8e44ad; margin-right:10px;">+ 動態新增 Port 欄位 (Dynamic Ports)</button>
+                        <button class="btn-primary">+ 新增一筆料號 (P/N)</button>
+                    </div>
+
+                    <div style="overflow-x:auto;">
+                        <table style="min-width: 1000px;">
+                            <thead>
+                                <tr>
+                                    <th>Model Name</th>
+                                    <th>P/N</th>
+                                    <th>Processor</th>
+                                    <th>Memory</th>
+                                    <th>Thermal</th>
+                                    <th>Operating Temp</th>
+                                    <th style="background:#f4e6fb; color:#8e44ad;">LAN (動態新增)</th>
+                                    <th style="width:50px;">刪除</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><input type="text" value="XYZ-100"></td>
+                                    <td><input type="text" value="900-123456-000"></td>
+                                    <td><input type="text" value="i9-13900E"></td>
+                                    <td><input type="text" value="32GB"></td>
+                                    <td><input type="text" value="Fanless"></td>
+                                    <td><input type="text" value="0~60°C"></td>
+                                    <td><input type="text" value="2"></td>
+                                    <td style="text-align:center; color:var(--danger); cursor:pointer;">🗑️</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div id="tab-6" class="tab-pane">
+                    <h3 style="color:var(--primary); margin-top:0;">關聯性設定 (Relations & Accessories)</h3>
+                    <p style="font-size:0.85em; color:#666;">當前編輯語系：<strong>English (EN)</strong>。支援智慧搜尋綁定。</p>
+                    
+                    <div class="form-group">
+                        <label>衍生產品 (Derivative Products) - 智慧搜尋</label>
+                        <input type="text" placeholder="🔍 輸入型號搜尋衍生產品...">
+                        <div style="margin-top: 10px;">
+                            <span style="background: #eef2f5; padding: 6px 12px; border-radius: 4px; font-size: 0.85em; border:1px solid #ccc;">Model ABC ✖</span>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>配件產品 (Accessory) - 智慧搜尋</label>
+                        <input type="text" placeholder="🔍 輸入型號搜尋相容配件...">
+                        <div style="margin-top: 10px;">
+                            <span style="background: #eef2f5; padding: 6px 12px; border-radius: 4px; font-size: 0.85em; border:1px solid #ccc;">Power Adapter 120W ✖</span>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>產品相關內容 (Related Content)</label>
+                        <select style="margin-bottom:10px;">
+                            <option value="">選擇既有系統內容 (Solution/Blog/News/Case Study)...</option>
+                            <option>Case Study: Smart Factory Automation</option>
+                        </select>
+                        <input type="text" placeholder="或直接貼上外部連結 (例如 YouTube URL)...">
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // 頁籤切換邏輯
+        function switchTab(tabId, element) {
+            // 移除所有頁籤的 active 狀態
+            document.querySelectorAll('.page-tabs div').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab-pane').forEach(pane => pane.classList.remove('active'));
+            
+            // 加上 active 狀態
+            element.classList.add('active');
+            document.getElementById(tabId).classList.add('active');
+        }
+    </script>
+</body>
+</html>

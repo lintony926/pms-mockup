@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>下載檔案管理 - DFI-PMS</title>
+    <style>
+        /* === 共用全局版型樣式 (與 index.html 100% 一致) === */
+        :root { --primary: #0056b3; --sidebar-bg: #2c3e50; --sidebar-hover: #34495e; --bg-color: #f4f7f6; --text-color: #333; --border-color: #ddd; --success: #27ae60; --danger: #e74c3c; }
+        body { margin: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; height: 100vh; background-color: var(--bg-color); color: var(--text-color); }
+        .sidebar { width: 250px; background-color: var(--sidebar-bg); color: white; display: flex; flex-direction: column; flex-shrink: 0; }
+        .logo { padding: 20px; font-size: 1.2rem; font-weight: bold; text-align: center; border-bottom: 1px solid #1a252f; background: #1a252f; }
+        .menu { list-style: none; padding: 0; margin: 0; flex-grow: 1; overflow-y: auto; }
+        .menu li { padding: 15px 20px; cursor: pointer; border-bottom: 1px solid #34495e; transition: 0.3s; }
+        .menu li:hover, .menu li.active { background-color: var(--sidebar-hover); border-left: 4px solid var(--primary); }
+        .menu .sub-menu { padding-left: 20px; font-size: 0.9em; background: #243342; margin-top: 10px; display: none; }
+        .menu li.expanded .sub-menu { display: block; }
+        .sub-menu div { padding: 10px; cursor: pointer; }
+        .sub-menu div:hover, .sub-menu div.active-sub { color: #3498db; font-weight: bold; }
+        .main-content { flex-grow: 1; display: flex; flex-direction: column; overflow-y: auto; }
+        .header { background: white; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1); z-index: 10; position: sticky; top: 0; }
+        .user-info { font-size: 0.9em; color: #666; }
+        .logout { color: var(--primary); cursor: pointer; font-weight: bold; margin-left: 10px; }
+        .content-area { padding: 30px; }
+        .page { background: white; padding: 25px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        h2 { margin-top: 0; color: var(--primary); border-bottom: 2px solid var(--primary); padding-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+
+        /* === 按鈕與開關 === */
+        .btn-primary { background: var(--primary); color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; }
+        .btn-success { background: var(--success); color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; }
+        .btn-secondary { background: #95a5a6; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; }
+        .toggle-switch { position: relative; display: inline-block; width: 40px; height: 20px; background-color: #ccc; border-radius: 20px; cursor: pointer; vertical-align: middle; }
+        .toggle-switch::after { content: ''; position: absolute; width: 16px; height: 16px; background-color: white; border-radius: 50%; top: 2px; left: 2px; transition: 0.3s; }
+        .toggle-switch.on { background-color: var(--success); }
+        .toggle-switch.on::after { left: 22px; }
+
+        /* === 表單排版與多語系併列 === */
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; font-weight: bold; margin-bottom: 8px; color: #444; font-size: 0.9em; }
+        .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 4px; box-sizing: border-box; }
+        
+        .lang-container { background: #fcfcfc; padding: 20px; border: 1px solid #eee; border-radius: 6px; margin-bottom: 20px; }
+        .lang-row { display: flex; align-items: center; margin-bottom: 15px; }
+        .lang-row:last-child { margin-bottom: 0; }
+        .lang-label { width: 140px; text-align: right; padding-right: 20px; font-weight: bold; color: #555; font-size: 0.9em; flex-shrink: 0; }
+        .lang-input { flex-grow: 1; }
+
+        /* === 專屬組件：檔案清單表格 === */
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { border: 1px solid var(--border-color); padding: 12px; text-align: left; font-size: 0.9em; }
+        th { background-color: #f8f9fa; font-weight: bold; }
+        
+        .tree-select { border: 1px solid #ddd; padding: 15px; max-height: 180px; overflow-y: auto; background: #fafafa; border-radius: 4px; line-height: 1.8; }
+        .file-upload-zone { border: 2px dashed #ccc; padding: 30px; text-align: center; border-radius: 6px; background: #fafafa; color: #666; cursor: pointer; }
+
+        .view-section { display: none; }
+        .view-section.active { display: block; }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <div class="logo">DFI-PMS 產品管理</div>
+        <ul class="menu">
+            <li onclick="window.location.href='index.html'">🏠 首頁 (Dashboard)</li>
+            <li onclick="window.location.href='system-admin.html'">⚙️ 一、系統管理</li>
+            <li onclick="window.location.href='account-admin.html'">👤 二、帳號權限管理</li>
+            <li class="expanded" onclick="this.classList.toggle('expanded')">
+                📦 三、產品管理
+                <div class="sub-menu">
+                    <div onclick="event.stopPropagation(); window.location.href='product-category.html'">▶ 產品分類管理</div>
+                    <div onclick="event.stopPropagation(); window.location.href='product-filter.html'">▶ 產品篩選器管理</div>
+                    <div onclick="event.stopPropagation(); window.location.href='product-spec.html'">▶ 產品規格欄位管理</div>
+					<div onclick="event.stopPropagation(); window.location.href='product-tag.html'">▶ Tag 管理</div>
+                    <div onclick="event.stopPropagation(); window.location.href='product-info.html'">▶ 產品資訊管理</div>
+                </div>
+            </li>
+            <li class="active" onclick="window.location.href='download-admin.html'">📁 四、下載檔案管理</li>
+        </ul>
+    </div>
+
+    <div class="main-content">
+        <div class="header">
+            <div id="breadcrumb">下載檔案管理</div>
+            <div class="user-info">admin@dfi.com (SSO) <span class="logout">[登出]</span></div>
+        </div>
+        
+        <div class="content-area">
+            
+            <div id="cat-list" class="view-section active page">
+                <h2>1. 檔案類別管理 <button class="btn-primary" onclick="toggleView('cat-form')">+ 新增類別</button></h2>
+                <p style="color:#666; font-size:0.9em;"> 建立下載中心的大/次分類層級。僅「類別名稱」具備多語系維護。</p>
+                <table>
+                    <thead>
+                        <tr><th style="width:60px; text-align:center;">排序</th><th>類別名稱 (EN)</th><th>層級</th><th>狀態</th><th style="width:100px; text-align:center;">操作</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td style="text-align:center;">↕ 1</td><td><strong>Technical Documents</strong></td><td>大分類</td>
+                            <td><div class="toggle-switch on"></div></td>
+                            <td style="text-align:center;"><a href="javascript:void(0)" onclick="toggleView('cat-form')">編輯</a></td>
+                        </tr>
+                        <tr style="background:#fcfcfc;">
+                            <td style="text-align:center;">↕ 1</td><td>&nbsp;&nbsp;&nbsp;&nbsp;└ User Manual</td><td>次分類</td>
+                            <td><div class="toggle-switch on"></div></td>
+                            <td style="text-align:center;"><a href="javascript:void(0)" onclick="toggleView('cat-form')">編輯</a></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div id="cat-form" class="view-section page">
+                <h2>維護檔案類別</h2>
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label>上層類別 (Parent Category) *</label>
+                        <select><option>無 (作為大分類)</option><option selected>Technical Documents</option></select>
+                    </div>
+                    <div class="form-group">
+                        <label>啟用狀態</label>
+                        <div class="toggle-switch on" onclick="this.classList.toggle('on')"></div>
+                    </div>
+                </div>
+                <h3 style="color:var(--primary); border-bottom:1px solid #eee; padding-bottom:10px;">檔案類別名稱 (5 語系併列)</h3>
+                <div class="lang-container">
+                    <div class="lang-row">
+                        <div class="lang-label">English (EN) *</div><div class="lang-input"><input type="text" value="User Manual"></div>
+                    </div>
+                    <div class="lang-row">
+                        <div class="lang-label">繁體中文 (TW)</div><div class="lang-input"><input type="text" value="使用手冊"></div>
+                    </div>
+                    <div class="lang-row">
+                        <div class="lang-label">簡體中文 (CN)</div><div class="lang-input"><input type="text" value="使用手册"></div>
+                    </div>
+                    <div class="lang-row">
+                        <div class="lang-label">日本語 (JP)</div><div class="lang-input"><input type="text" value="ユーザーマニュアル"></div>
+                    </div>
+                    <div class="lang-row">
+                        <div class="lang-label">Deutsch (DE)</div><div class="lang-input"><input type="text" value="Benutzerhandbuch"></div>
+                    </div>
+                </div>
+                <div style="text-align:right;">
+                    <button class="btn-secondary" onclick="toggleView('cat-list')">取消</button>
+                    <button class="btn-success" onclick="toggleView('cat-list')">💾 儲存類別</button>
+                </div>
+            </div>
+
+            <hr style="border:0; border-top:1px solid #ccc; margin:40px 0;">
+
+            <div id="file-list" class="view-section active page">
+                <h2>2. 檔案列表管理 <button class="btn-primary" onclick="toggleView('file-form')">+ 上傳新檔案</button></h2>
+                <p style="color:#666; font-size:0.9em;"> 管理全站實體檔案與連結。檔案本身為全語系共用。</p>
+                <table>
+                    <thead>
+                        <tr><th>檔案名稱 (Display Name)</th><th>所屬次分類</th><th>來源</th><th>權限</th><th>狀態</th><th style="text-align:center;">操作</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>XYZ-Manual-v1.0.pdf</strong></td><td>User Manual</td><td>實體檔案</td><td>公開</td>
+                            <td><div class="toggle-switch on"></div></td>
+                            <td style="text-align:center;"><a href="javascript:void(0)" onclick="toggleView('file-form')">編輯</a></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div id="file-form" class="view-section page">
+                <h2>維護檔案資訊</h2>
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label>檔案所屬次分類 *</label>
+                        <select><option>User Manual</option><option>Datasheet</option></select>
+                    </div>
+                    <div class="form-group">
+                        <label>檔案顯示名稱 (File Name) *</label>
+                        <input type="text" value="XYZ-Manual-v1.0.pdf">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>檔案來源方式 *</label>
+                    <label style="display:inline; margin-right:20px;"><input type="radio" name="source" checked> 1. File Upload (檔案上傳)</label>
+                    <label style="display:inline;"><input type="radio" name="source"> 2. External Link (外部連結)</label>
+                </div>
+
+                <div class="form-group">
+                    <label>實體檔案上傳 (支援 PDF, ZIP)</label>
+                    <div class="file-upload-zone">📄 點擊上傳或拖曳檔案至此</div>
+                    <p style="font-size:0.8em; color:#666; margin-top:5px;">目前檔案：XYZ-Manual-v1.0.pdf (2.4 MB)</p>
+                </div>
+
+                <div class="form-group">
+                    <label>檔案描述 (File Description)</label>
+                    <textarea rows="2"></textarea>
+                </div>
+
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label>限定 Partner Zone 下載</label>
+                        <div class="toggle-switch" onclick="this.classList.toggle('on')"></div>
+                        <span style="font-size:0.85em; color:#666; margin-left:10px;">啟用時，僅限 Partner 登入後可見。</span>
+                    </div>
+                    <div class="form-group">
+                        <label>啟用狀態</label>
+                        <div class="toggle-switch on" onclick="this.classList.toggle('on')"></div>
+                    </div>
+                </div>
+
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label>關聯產品分類 (Category Mapping) [多選]</label>
+                        <div class="tree-select">
+                            <label><input type="checkbox" checked> Industrial Motherboards</label><br>
+                            <label style="margin-left:25px;"><input type="checkbox" checked> Mini-ITX</label>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>關聯產品型號 (Product Mapping) [智慧搜尋]</label>
+                        <input type="text" placeholder="🔍 輸入型號搜尋並綁定...">
+                        <div style="margin-top:10px;">
+                            <span style="background:#eef2f5; padding:5px 10px; border-radius:4px; font-size:0.85em; border:1px solid #ccc;">Model XYZ ✖</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="text-align:right;">
+                    <button class="btn-secondary" onclick="toggleView('file-list')">取消</button>
+                    <button class="btn-success" onclick="toggleView('file-list')">💾 儲存檔案資訊</button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+    
+    <script>
+        function toggleView(id) {
+            // 類別列表與表單切換
+            if(id === 'cat-list' || id === 'cat-form') {
+                document.getElementById('cat-list').classList.remove('active');
+                document.getElementById('cat-form').classList.remove('active');
+                document.getElementById(id).classList.add('active');
+            }
+            // 檔案列表與表單切換
+            if(id === 'file-list' || id === 'file-form') {
+                document.getElementById('file-list').classList.remove('active');
+                document.getElementById('file-form').classList.remove('active');
+                document.getElementById(id).classList.add('active');
+            }
+            window.scrollTo(0, 0);
+        }
+    </script>
+</body>
+</html>

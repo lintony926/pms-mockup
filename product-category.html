@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>產品分類管理 - DFI-PMS</title>
+    <style>
+        /* 共用全局樣式 */
+        :root { --primary: #0056b3; --sidebar-bg: #2c3e50; --sidebar-hover: #34495e; --bg-color: #f4f7f6; --text-color: #333; --border-color: #ddd; --success: #27ae60; --danger: #e74c3c; }
+        body { margin: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; height: 100vh; background-color: var(--bg-color); color: var(--text-color); }
+        .sidebar { width: 250px; background-color: var(--sidebar-bg); color: white; display: flex; flex-direction: column; flex-shrink: 0; }
+        .logo { padding: 20px; font-size: 1.2rem; font-weight: bold; text-align: center; border-bottom: 1px solid #1a252f; background: #1a252f; }
+        .menu { list-style: none; padding: 0; margin: 0; flex-grow: 1; overflow-y: auto; }
+        .menu li { padding: 15px 20px; cursor: pointer; border-bottom: 1px solid #34495e; transition: 0.3s; }
+        .menu li:hover, .menu li.active { background-color: var(--sidebar-hover); border-left: 4px solid var(--primary); }
+        .menu .sub-menu { padding-left: 20px; font-size: 0.9em; background: #243342; margin-top: 10px; display: block; }
+        .sub-menu div { padding: 10px; cursor: pointer; }
+        .sub-menu div:hover, .sub-menu div.active-sub { color: #3498db; }
+        
+        .main-content { flex-grow: 1; display: flex; flex-direction: column; overflow-y: auto; }
+        .header { background: white; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1); z-index: 10; position: sticky; top: 0; }
+        .content-area { padding: 30px; }
+        
+        .btn-primary { background: var(--primary); color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; text-decoration: none; display: inline-block; }
+        .btn-secondary { background: #95a5a6; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; }
+        .btn-success { background: var(--success); color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-size: 1rem; }
+        
+        /* 頁面切換控制 */
+        .view-section { display: none; }
+        .view-section.active { display: block; }
+
+        /* 清單列表樣式 */
+        .list-card { background: white; padding: 25px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { border: 1px solid var(--border-color); padding: 12px; text-align: left; }
+        th { background-color: #f8f9fa; font-weight: bold; }
+        .status-dot { display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 5px; }
+        .dot-on { background-color: var(--success); }
+        .dot-off { background-color: #ccc; }
+        .lang-status { display: flex; gap: 10px; font-size: 0.85rem; align-items: center; }
+
+        /* 表單樣式 */
+        .form-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .lang-bar { display: flex; justify-content: space-between; align-items: center; background: #eef2f5; padding: 10px 15px; border-radius: 6px; margin-bottom: 20px; }
+        .lang-tabs span { padding: 8px 15px; cursor: pointer; border-radius: 4px; margin-right: 5px; font-weight: bold; }
+        .lang-tabs span.active { background: var(--primary); color: white; }
+        
+        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        .card h3 { margin-top: 0; color: var(--primary); border-bottom: 1px solid #eee; padding-bottom: 10px; }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; }
+        
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; font-weight: bold; margin-bottom: 8px; font-size: 0.9em; color: #444; }
+        .form-group input[type="text"], .form-group select, .form-group textarea { width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 4px; box-sizing: border-box; }
+        
+        .toggle-switch { position: relative; display: inline-block; width: 40px; height: 20px; background-color: #ccc; border-radius: 20px; cursor: pointer; }
+        .toggle-switch::after { content: ''; position: absolute; width: 16px; height: 16px; background-color: white; border-radius: 50%; top: 2px; left: 2px; transition: 0.3s; }
+        .toggle-switch.on { background-color: var(--success); }
+        .toggle-switch.on::after { left: 22px; }
+        
+        .file-upload-box { border: 2px dashed #ccc; padding: 20px; text-align: center; border-radius: 6px; background: #fafafa; color: #666; cursor: pointer; transition: 0.3s; }
+        .file-upload-box:hover { border-color: var(--primary); background: #f0f8ff; }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <div class="logo">DFI-PMS 產品管理</div>
+        <ul class="menu">
+            <li onclick="window.location.href='index.html'">🏠 首頁 (Dashboard)</li>
+            <li onclick="window.location.href='system-admin.html'">⚙️ 一、系統管理</li>
+            <li onclick="window.location.href='account-admin.html'">👤 二、帳號權限管理</li>
+            <li class="expanded">
+                📦 三、產品管理
+                <div class="sub-menu">
+                    <div class="active-sub" onclick="window.location.href='product-category.html'">▶ 產品分類管理</div>
+                    <div onclick="window.location.href='product-filter.html'">▶ 產品篩選器管理</div>
+                    <div onclick="window.location.href='product-spec.html'">▶ 產品規格欄位管理</div>
+					<div onclick="window.location.href='product-tag.html'">▶ Tag 管理</div>
+                    <div onclick="window.location.href='product-info.html'">▶ 產品資訊管理</div>
+                </div>
+            </li>
+            <li onclick="window.location.href='download-admin.html'">📁 四、下載檔案管理</li>
+        </ul>
+    </div>
+
+    <div class="main-content">
+        <div class="header">
+            <div id="breadcrumb">產品管理 / 產品分類管理</div>
+            <div class="user-info">admin@dfi.com (SSO) <span style="color:var(--primary);cursor:pointer;font-weight:bold;">[登出]</span></div>
+        </div>
+
+        <div class="content-area">
+            
+            <div id="view-list" class="view-section active">
+                <div class="list-card">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <h2 style="margin: 0; color: var(--primary);">產品分類列表 (Category List)</h2>
+                        <button class="btn-primary" onclick="toggleView('view-form', true)">+ 新增分類</button>
+                    </div>
+                    <p style="color:#666; font-size:0.9em;">支援拖曳排序。狀態燈號指示各語系是否已啟用並發布至前台。</p>
+                    
+                    <table>
+                        <thead>
+                            <tr>
+                                <th style="width: 50px;">排序</th>
+                                <th>分類名稱 (Category Name)</th>
+                                <th>層級 (Level)</th>
+                                <th>語系狀態 (Language Status)</th>
+                                <th style="width: 150px; text-align: center;">操作 (Action)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td style="text-align:center; cursor:grab;">↕</td>
+                                <td><strong>Industrial Motherboards</strong></td>
+                                <td>主分類</td>
+                                <td>
+                                    <div class="lang-status">
+                                        <span title="English"><span class="status-dot dot-on"></span>EN</span>
+                                        <span title="Traditional Chinese"><span class="status-dot dot-on"></span>TW</span>
+                                        <span title="Simplified Chinese"><span class="status-dot dot-on"></span>CN</span>
+                                        <span title="Japanese"><span class="status-dot dot-on"></span>JP</span>
+                                        <span title="German"><span class="status-dot dot-off"></span>DE</span>
+                                    </div>
+                                </td>
+                                <td style="text-align: center;"><a href="javascript:void(0)" style="color:var(--primary);" onclick="toggleView('view-form', false)">編輯</a></td>
+                            </tr>
+                            <tr style="background-color: #fcfcfc;">
+                                <td style="text-align:center; cursor:grab;">↕</td>
+                                <td>&nbsp;&nbsp;&nbsp;&nbsp;├ Mini-ITX</td>
+                                <td>次分類</td>
+                                <td>
+                                    <div class="lang-status">
+                                        <span><span class="status-dot dot-on"></span>EN</span>
+                                        <span><span class="status-dot dot-on"></span>TW</span>
+                                        <span><span class="status-dot dot-off"></span>CN</span>
+                                        <span><span class="status-dot dot-off"></span>JP</span>
+                                        <span><span class="status-dot dot-off"></span>DE</span>
+                                    </div>
+                                </td>
+                                <td style="text-align: center;"><a href="javascript:void(0)" style="color:var(--primary);" onclick="toggleView('view-form', false)">編輯</a></td>
+                            </tr>
+                            <tr style="background-color: #fcfcfc;">
+                                <td style="text-align:center; cursor:grab;">↕</td>
+                                <td>&nbsp;&nbsp;&nbsp;&nbsp;├ microATX</td>
+                                <td>次分類</td>
+                                <td>
+                                    <div class="lang-status">
+                                        <span><span class="status-dot dot-on"></span>EN</span>
+                                        <span><span class="status-dot dot-on"></span>TW</span>
+                                        <span><span class="status-dot dot-on"></span>CN</span>
+                                        <span><span class="status-dot dot-on"></span>JP</span>
+                                        <span><span class="status-dot dot-off"></span>DE</span>
+                                    </div>
+                                </td>
+                                <td style="text-align: center;"><a href="javascript:void(0)" style="color:var(--primary);" onclick="toggleView('view-form', false)">編輯</a></td>
+                            </tr>
+                            <tr>
+                                <td style="text-align:center; cursor:grab;">↕</td>
+                                <td><strong>System-On-Modules</strong></td>
+                                <td>主分類</td>
+                                <td>
+                                    <div class="lang-status">
+                                        <span><span class="status-dot dot-on"></span>EN</span>
+                                        <span><span class="status-dot dot-off"></span>TW</span>
+                                        <span><span class="status-dot dot-off"></span>CN</span>
+                                        <span><span class="status-dot dot-off"></span>JP</span>
+                                        <span><span class="status-dot dot-off"></span>DE</span>
+                                    </div>
+                                </td>
+                                <td style="text-align: center;"><a href="javascript:void(0)" style="color:var(--primary);" onclick="toggleView('view-form', false)">編輯</a></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="view-form" class="view-section">
+                <div class="form-header">
+                    <h2 id="form-title" style="margin: 0; color: var(--primary);">編輯分類：Mini-ITX</h2>
+                    <div>
+                        <button class="btn-secondary" onclick="toggleView('view-list')">← 返回列表</button>
+                        <button class="btn-success" onclick="alert('儲存成功！'); toggleView('view-list')">💾 儲存分類設定</button>
+                    </div>
+                </div>
+
+                <div class="lang-bar">
+                    <div class="lang-tabs">
+                        <span class="active">EN (預設)</span><span>TW</span><span>CN</span><span>JP</span><span>DE</span>
+                    </div>
+                    <button style="background: #f39c12; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer;">🔄 一鍵同步內容至其他語言</button>
+                </div>
+
+                <div class="card">
+                    <h3>1. 基本設定 (Basic Structure & Status)</h3>
+                    <div class="grid-2">
+                        <div class="form-group">
+                            <label>上層分類 (Parent Category)</label>
+                            <select>
+                                <option>無 (作為主分類)</option>
+                                <option selected>Industrial Motherboards</option>
+                                <option>System-On-Modules</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>分類排序 (Category Sort)</label>
+                            <input type="text" value="1" placeholder="輸入數字或於清單頁拖曳排序" readonly style="background:#f0f0f0;">
+                        </div>
+                    </div>
+                    <div class="grid-2">
+                        <div class="form-group">
+                            <label style="color:var(--danger);">當前語系啟用狀態 (Language Status) *</label>
+                            <div class="toggle-switch on" onclick="this.classList.toggle('on')"></div>
+                            <span style="font-size:0.85em; color:#666; margin-left:10px;">(控制該分類於前台此語系的顯示開關)</span>
+                        </div>
+                        <div class="form-group">
+                            <label>分類名稱 (Category Name) * <span style="font-weight:normal; color:#888;">(導覽選單與麵包屑顯示)</span></label>
+                            <input type="text" value="Mini-ITX">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>2. 網頁內容 (Landing Page Content)</h3>
+                    <div class="grid-2">
+                        <div class="form-group">
+                            <label>Slug (URL自定義名稱)</label>
+                            <input type="text" value="mini-itx" placeholder="若未填寫，以 Category Name 為預設值">
+                        </div>
+                        <div class="form-group">
+                            <label>頁面顯示標題 (Page Title - H1)</label>
+                            <input type="text" value="Industrial Mini-ITX Motherboards">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>介紹 (Introduction)</label>
+                        <textarea rows="3">Compact, high-performance Mini-ITX form factor motherboards for industrial and embedded applications.</textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>內容 (Content - Rich Text)</label>
+                        <div style="border:1px solid #ccc; height:150px; padding:15px; background:#fafafa; border-radius:4px; color:#888; font-family:monospace;">
+                            [ 網頁編輯器區塊載入中... ]<br>
+                            支援: 粗體、標題H2-H4、列表、超連結、圖片媒體上傳、表格與 HTML 原始碼模式。
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>3. 多媒體與圖片管理 (Media & Images)</h3>
+                    
+                    <h4 style="margin-bottom:10px; border-bottom:2px dashed #eee; padding-bottom:5px;">RWD Banner 圖片上傳</h4>
+                    <div class="grid-3">
+                        <div class="form-group">
+                            <label>Banner - Desktop</label>
+                            <div class="file-upload-box">📷 點擊上傳或拖曳圖片 (Desktop)</div>
+                        </div>
+                        <div class="form-group">
+                            <label>Banner - Tablet</label>
+                            <div class="file-upload-box">📱 點擊上傳或拖曳圖片 (Tablet)</div>
+                        </div>
+                        <div class="form-group">
+                            <label>Banner - Mobile</label>
+                            <div class="file-upload-box">📱 點擊上傳或拖曳圖片 (Mobile)</div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Banner Alt Text (替代文字)</label>
+                        <input type="text" placeholder="輸入 Banner 的 SEO 替代文字...">
+                    </div>
+
+                    <h4 style="margin-top:30px; margin-bottom:10px; border-bottom:2px dashed #eee; padding-bottom:5px;">分類代表產品圖 (Category Image)</h4>
+                    <div class="grid-3">
+                        <div class="form-group">
+                            <label>Category Image - Desktop</label>
+                            <div class="file-upload-box">📷 點擊上傳 (Desktop)</div>
+                        </div>
+                        <div class="form-group">
+                            <label>Category Image - Tablet</label>
+                            <div class="file-upload-box">📱 點擊上傳 (Tablet)</div>
+                        </div>
+                        <div class="form-group">
+                            <label>Category Image - Mobile</label>
+                            <div class="file-upload-box">📱 點擊上傳 (Mobile)</div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Image Alt Text (替代文字)</label>
+                        <input type="text" placeholder="輸入圖片的 SEO 替代文字...">
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>4. SEO 設定 (Search Engine Optimization)</h3>
+                    <div class="grid-2">
+                        <div class="form-group">
+                            <label>Meta Title</label>
+                            <input type="text" value="Industrial Mini-ITX Motherboards | DFI" placeholder="定義 SEO 標題">
+                        </div>
+                        <div class="form-group">
+                            <label>Meta Keywords</label>
+                            <input type="text" value="Mini-ITX, Industrial Motherboard, Embedded Board" placeholder="定義關鍵字，以逗號分隔">
+                        </div>
+                    </div>
+                    <div class="grid-2">
+                        <div class="form-group">
+                            <label>Meta Description</label>
+                            <textarea rows="4" placeholder="定義 SEO 描述...">Discover DFI's industrial-grade Mini-ITX motherboards designed for compact and high-performance embedded systems.</textarea>
+                        </div>
+                        <div class="form-group" style="display:flex; flex-direction:column; justify-content:space-between;">
+                            <div>
+                                <label>Author</label>
+                                <input type="text" value="DFI Inc." placeholder="SEO 作者資訊">
+                            </div>
+                            <div style="margin-top: 15px;">
+                                <label>Custom HTML / Code</label>
+                                <textarea rows="4" placeholder="嵌入追蹤碼或特殊 HTML 語法 (如 Schema)"></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="text-align: right; margin-bottom: 50px;">
+                    <button class="btn-success" onclick="alert('儲存成功！'); toggleView('view-list')">💾 儲存並發布此分類設定</button>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 切換 List View 與 Form View
+        function toggleView(viewId, isAddMode = false) {
+            // 隱藏所有區塊
+            document.querySelectorAll('.view-section').forEach(section => {
+                section.classList.remove('active');
+            });
+            // 顯示目標區塊
+            document.getElementById(viewId).classList.add('active');
+
+            // 如果是切換到表單且為「新增模式」，則重置標題與假資料
+            if (viewId === 'view-form') {
+                if (isAddMode) {
+                    document.getElementById('form-title').innerText = '✨ 新增分類 (EN)';
+                    // 清除 input values 作為新增示意 (實作上可清空欄位)
+                    document.querySelectorAll('#view-form input[type="text"], #view-form textarea').forEach(el => el.value = '');
+                } else {
+                    document.getElementById('form-title').innerText = '編輯分類：Mini-ITX (EN)';
+                }
+                window.scrollTo(0, 0); // 回到頂部
+            }
+        }
+    </script>
+</body>
+</html>

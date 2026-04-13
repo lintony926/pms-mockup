@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>帳號權限管理 - DFI-PMS</title>
+    <style>
+        :root { --primary: #0056b3; --sidebar-bg: #2c3e50; --sidebar-hover: #34495e; --bg-color: #f4f7f6; --text-color: #333; --border-color: #ddd; --success: #27ae60; }
+        body { margin: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; height: 100vh; background-color: var(--bg-color); color: var(--text-color); }
+        .sidebar { width: 250px; background-color: var(--sidebar-bg); color: white; display: flex; flex-direction: column; flex-shrink: 0; }
+        .logo { padding: 20px; font-size: 1.2rem; font-weight: bold; text-align: center; border-bottom: 1px solid #1a252f; background: #1a252f; }
+        .menu { list-style: none; padding: 0; margin: 0; flex-grow: 1; overflow-y: auto; }
+        .menu li { padding: 15px 20px; cursor: pointer; border-bottom: 1px solid #34495e; transition: 0.3s; }
+        .menu li:hover, .menu li.active { background-color: var(--sidebar-hover); border-left: 4px solid var(--primary); }
+        .menu .sub-menu { padding-left: 20px; font-size: 0.9em; background: #243342; margin-top: 10px; display: none; }
+        .menu li.expanded .sub-menu { display: block; }
+        .sub-menu div { padding: 10px; cursor: pointer; }
+        .sub-menu div:hover { color: #3498db; }
+        
+        .main-content { flex-grow: 1; display: flex; flex-direction: column; overflow-y: auto; }
+        .header { background: white; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1); z-index: 10; }
+        .content-area { padding: 30px; }
+        .page { background: white; padding: 25px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); display: none; }
+        .page.active { display: block; }
+        h2 { margin-top: 0; color: var(--primary); border-bottom: 2px solid var(--primary); padding-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+        
+        .btn-primary { background: var(--primary); color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; }
+        .btn-secondary { background: #95a5a6; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; }
+        
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { border: 1px solid var(--border-color); padding: 12px; text-align: left; }
+        th { background-color: #f8f9fa; font-weight: bold; }
+        .toggle-switch { position: relative; display: inline-block; width: 40px; height: 20px; background-color: #ccc; border-radius: 20px; cursor: pointer; }
+        .toggle-switch::after { content: ''; position: absolute; width: 16px; height: 16px; background-color: white; border-radius: 50%; top: 2px; left: 2px; transition: 0.3s; }
+        .toggle-switch.on { background-color: var(--success); }
+        .toggle-switch.on::after { left: 22px; }
+        
+        /* 表單樣式 */
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; font-weight: bold; margin-bottom: 5px; font-size: 0.9em; }
+        .form-group input[type="text"], .form-group select { width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 4px; box-sizing: border-box; }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        
+        /* 頁籤切換 */
+        .tabs { display: flex; border-bottom: 2px solid var(--border-color); margin-bottom: 20px; }
+        .tabs div { padding: 10px 20px; cursor: pointer; color: #666; font-weight: bold; }
+        .tabs div.active { color: var(--primary); border-bottom: 3px solid var(--primary); margin-bottom: -2px; }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <div class="logo">DFI-PMS 產品管理</div>
+        <ul class="menu">
+            <li onclick="window.location.href='index.html'">🏠 首頁 (Dashboard)</li>
+            <li onclick="window.location.href='system-admin.html'">⚙️ 一、系統管理</li>
+            <li class="active" onclick="window.location.href='account-admin.html'">👤 二、帳號權限管理</li>
+            <li class="expanded" onclick="this.classList.toggle('expanded')">
+                📦 三、產品管理
+                <div class="sub-menu">
+                    <div onclick="event.stopPropagation(); window.location.href='product-category.html'">▶ 產品分類管理</div>
+                    <div onclick="event.stopPropagation(); window.location.href='product-filter.html'">▶ 產品篩選器管理</div>
+                    <div onclick="event.stopPropagation(); window.location.href='product-spec.html'">▶ 產品規格欄位管理</div>
+					<div onclick="event.stopPropagation(); window.location.href='product-tag.html'">▶ Tag 管理</div>
+                    <div onclick="event.stopPropagation(); window.location.href='product-info.html'">▶ 產品資訊管理</div>
+                </div>
+            </li>
+            <li onclick="window.location.href='download-admin.html'">📁 四、下載檔案管理</li>
+        </ul>
+    </div>
+
+    <div class="main-content">
+        <div class="header">
+            <div id="breadcrumb">帳號權限管理</div>
+            <div class="user-info">admin@dfi.com (SSO) <span style="color:var(--primary);cursor:pointer;font-weight:bold;">[登出]</span></div>
+        </div>
+        <div class="content-area">
+            
+            <div class="tabs">
+                <div id="tab-account" class="active" onclick="switchMainTab('account')">1. 帳號管理</div>
+                <div id="tab-role" onclick="switchMainTab('role')">2. 角色管理</div>
+            </div>
+
+            <div id="view-account-list" class="page active">
+                <h2>帳號列表 <button class="btn-primary" onclick="toggleView('view-account-add')">+ 新增帳號</button></h2>
+                <table>
+                    <thead><tr><th>姓名</th><th>信箱 (SSO綁定)</th><th>公司別</th><th>部門</th><th>角色</th><th>狀態</th><th>操作</th></tr></thead>
+                    <tbody>
+                        <tr><td>王小明</td><td>ming@dfi.com</td><td>DFI</td><td>MKT</td><td>PM</td><td><div class="toggle-switch on"></div></td><td><a href="#">編輯</a></td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div id="view-account-add" class="page">
+                <h2>新增帳號 (Add Account)</h2>
+                <div class="grid-2">
+                    <div class="form-group"><label>Name (姓名) *</label><input type="text" placeholder="輸入使用者姓名"></div>
+                    <div class="form-group"><label>Email (需與微軟 SSO 一致) *</label><input type="text" placeholder="user@dfi.com"></div>
+                    <div class="form-group"><label>Company (公司別)</label><select><option>DFI</option><option>AE</option></select></div>
+                    <div class="form-group"><label>Department (部門)</label><input type="text" placeholder="輸入所屬部門"></div>
+                    <div class="form-group"><label>Role (角色權限)</label>
+                        <div style="padding: 10px; border:1px solid #ddd; border-radius:4px;">
+                            <label style="display:inline; margin-right:15px;"><input type="radio" name="role" checked> Admin</label>
+                            <label style="display:inline; margin-right:15px;"><input type="radio" name="role"> PM</label>
+                            <label style="display:inline; margin-right:15px;"><input type="radio" name="role"> FAE</label>
+                        </div>
+                    </div>
+                    <div class="form-group"><label>Status (啟用狀態)</label><div class="toggle-switch on" onclick="this.classList.toggle('on')"></div></div>
+                </div>
+                <div style="margin-top:20px; text-align:right;">
+                    <button class="btn-secondary" onclick="toggleView('view-account-list')">取消</button>
+                    <button class="btn-primary" style="background:var(--success);" onclick="alert('帳號已新增！');toggleView('view-account-list')">💾 儲存並建立</button>
+                </div>
+            </div>
+
+            <div id="view-role-list" class="page">
+                <h2>角色列表 <button class="btn-primary" onclick="toggleView('view-role-add')">+ 新增角色</button></h2>
+                <table>
+                    <thead><tr><th>角色名稱 (Role Name)</th><th>權限範圍概述</th><th>狀態</th><th>操作</th></tr></thead>
+                    <tbody>
+                        <tr><td>Admin</td><td>系統全權限</td><td><div class="toggle-switch on"></div></td><td><a href="#">編輯</a></td></tr>
+                        <tr><td>PM</td><td>產品管理 (寫入)、系統管理 (無權限)</td><td><div class="toggle-switch on"></div></td><td><a href="#">編輯</a></td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div id="view-role-add" class="page">
+                <h2>新增角色 (Add Role)</h2>
+                <div class="form-group"><label>Role Name (角色名稱) *</label><input type="text" placeholder="例如: Designer"></div>
+                <div class="form-group"><label>Status (狀態)</label><div class="toggle-switch on" onclick="this.classList.toggle('on')"></div></div>
+                
+                <h3 style="border-bottom:1px solid #ddd; padding-bottom:5px;">權限設定矩陣 (Permission Matrix)</h3>
+                <p style="font-size:0.9em; color:#666;">請勾選該角色於各模組的讀取 (R) 與寫入/編輯 (W) 權限。</p>
+                <table>
+                    <thead><tr><th>後台模組選單</th><th>Read (讀取)</th><th>Write/Edit (寫入)</th></tr></thead>
+                    <tbody>
+                        <tr><td>一、系統管理</td><td><input type="checkbox"></td><td><input type="checkbox"></td></tr>
+                        <tr><td>二、帳號權限管理</td><td><input type="checkbox"></td><td><input type="checkbox"></td></tr>
+                        <tr style="background:#f0f8ff;"><td>三、產品管理 (主目錄)</td><td><input type="checkbox" checked></td><td><input type="checkbox" checked></td></tr>
+                        <tr><td>&nbsp;&nbsp;&nbsp;▶ 產品分類管理</td><td><input type="checkbox" checked></td><td><input type="checkbox" checked></td></tr>
+                        <tr><td>&nbsp;&nbsp;&nbsp;▶ 產品篩選器管理</td><td><input type="checkbox" checked></td><td><input type="checkbox"></td></tr>
+                        <tr><td>&nbsp;&nbsp;&nbsp;▶ 產品資訊管理</td><td><input type="checkbox" checked></td><td><input type="checkbox" checked></td></tr>
+                        <tr><td>四、下載檔案管理</td><td><input type="checkbox" checked></td><td><input type="checkbox"></td></tr>
+                    </tbody>
+                </table>
+                <div style="margin-top:20px; text-align:right;">
+                    <button class="btn-secondary" onclick="toggleView('view-role-list')">取消</button>
+                    <button class="btn-primary" style="background:var(--success);" onclick="alert('角色已新增！');toggleView('view-role-list')">💾 儲存角色設定</button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        // 頁籤切換邏輯 (帳號 vs 角色)
+        function switchMainTab(type) {
+            document.getElementById('tab-account').classList.remove('active');
+            document.getElementById('tab-role').classList.remove('active');
+            document.getElementById('tab-' + type).classList.add('active');
+            
+            // 隱藏所有 view
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            
+            // 顯示對應的 list view
+            document.getElementById('view-' + type + '-list').classList.add('active');
+        }
+
+        // 畫面切換邏輯 (列表 vs 新增表單)
+        function toggleView(viewId) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.getElementById(viewId).classList.add('active');
+        }
+    </script>
+</body>
+</html>
